@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import argparse
 import string
-from os import path
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import csv
@@ -39,6 +39,31 @@ def CreateWorldCloud(wordList, outFile):
     sys.exit(0)
 
 
+def CreateWordCloud(inputFile, outputFile, column, filter, value, delimiter):
+    print('Reading input file:', inputFile, '...')
+    inputData = list(csv.reader(open(inputFile), delimiter=delimiter))
+    print(len(inputData), 'lines read.')
+
+    if (filter != None) and (value != None):
+        print('Filtering data...')
+        filteredData = FilterData(inputData, filter, value)
+        print(len(filteredData), 'lines remaining.')
+    else:
+        filteredData = inputData
+
+    data = map(lambda x: SelectColumn(x, int(column)), filteredData)
+
+    if len(data) == 0:
+        print('No data remaining. Exiting...')
+        sys.exit(0)
+
+    print('Creating cloud...')
+    CreateWorldCloud(data, outputFile)
+    print('Saving file:', outputFile)
+
+    return
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Create Word Cloud from one colum of CSV file')
@@ -55,23 +80,5 @@ if __name__ == '__main__':
     if (args.delimiter != None):
         delimiter = args.delimiter
 
-    print 'Reading input file...',
-    inputData = list(csv.reader(open(args.input), delimiter=delimiter))
-    print len(inputData), 'lines read.'
-
-    if (args.filter != None) and (args.value != None):
-        print 'Filtering data...',
-        filteredData = FilterData(inputData, args.filter, args.value)
-        print len(filteredData), 'lines remaining.'
-    else:
-        filteredData = inputData
-
-    data = map(lambda x: SelectColumn(x, int(args.column)), filteredData)
-
-    if len(data) == 0:
-        print 'No data remaining. Exiting...'
-        sys.exit(0)
-
-    print 'Creating cloud...',
-    CreateWorldCloud(data, args.output)
-    print 'saving file.'
+    CreateWordCloud(args.input, args.output, args.column,
+                    args.filter, args.value, delimiter)

@@ -4,6 +4,7 @@
 # Divide cada arquivo de produção da CAPES em várias versões, uma por programa
 # Mantém o título do arquivo e coloca na pasta referente ao código do programa
 
+from __future__ import print_function
 import argparse
 import string
 import csv
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     dados = planilha[header:]
 
     for programa in programas:
-        print programa, '...'
+        print(programa, '...')
         dadosGravar = ExtraiPrograma(programa, cabecalho, dados, column)
 
         arquivoSaida = os.path.join(programa, args.input)
