@@ -14,16 +14,28 @@ import sys
 import numpy as np
 import os
 
-iRestrito = ['A1', 'A2', 'B1']
+def ColunaToIndice(coluna):
+    resposta = 0
+    for letra in coluna:
+        resposta = resposta * 26 + (ord(letra) - 64)
 
-codigoProgCol = 1
-siglaConfCol = 50
-qualisConfCol = 51
-siglaPerCol = 52
-qualisPerCol = 53
-siglaTotalCol = 54
-qualisTotalCol = 55
-autoresCol = 8
+    return resposta - 1
+
+
+iRestrito = ['A1', 'A2', 'B1']
+iGeral = ['A1', 'A2', 'B1', 'B2', 'B3', 'B4', 'B5']
+
+codigoProgCol = ColunaToIndice('B')
+siglaConfCol = ColunaToIndice('Y')
+qualisConfCol = ColunaToIndice('W')
+siglaPerCol = ColunaToIndice('BE')
+qualisPerCol = ColunaToIndice('W')
+siglaTotalCol = ColunaToIndice('BF')
+qualisTotalCol = ColunaToIndice('W')
+autoresCol = ColunaToIndice('O')
+anoCol = ColunaToIndice('A')
+tiposDiscentes = ['DISCENTE MESTRADO', 'DISCENTE DOUTORADO', 'PARTEXT_EGRESSO_3_ANOS']
+
 
 def SelecionaColuna(tabela, coluna):
     resposta = []
@@ -41,7 +53,9 @@ def CreateWordCloud(wordList, outFile, recria):
 
     if len(wordList) == 0:
         return
-    text = ' '.join(wordList)
+
+    limpo = map(LimpaSigla, wordList)
+    text = ' '.join(limpo)
 
     # Generate a word cloud image
     wordcloud = WordCloud(width=1920, height=1024).generate(text)
@@ -113,6 +127,19 @@ def SelecionaLinhas(tabela, coluna, valores):
     return resposta
 
 
+def SelecionaPorCategoriaAutores(tabela, categorias):
+    resposta = []
+
+    for linha in tabela:
+        if len(linha) > autoresCol:
+            for c in categorias:
+                if c in linha[autoresCol]:
+                    resposta.append(linha)
+                    break
+
+    return resposta
+
+
 def ExcluiLinhas(tabela, valores):
     resposta = []
 
@@ -123,7 +150,7 @@ def ExcluiLinhas(tabela, valores):
     return resposta
 
 
-def Top3(lista):
+def Top3(lista, qualis):
     d = {}
 
     # count elements
@@ -133,9 +160,15 @@ def Top3(lista):
     if '' in d:
         d.pop('')
 
-    resposta = sorted(d, key=d.get, reverse=True)
+    novo = {}
+    for item in d.keys():
+        novo[item] = '{:03d}'.format(d[item]) + qualis[item]
 
-    if len(resposta) > 3:
+    # Se houver empate, estamos pegando sempre o menor Qualis
+    resposta = sorted(novo, key=novo.get, reverse=True)
+
+    # Considerando os dados atuais, nenhum programa tem menos de 3 entradas no IRestrito
+    if len(resposta) >= 3:
         return resposta[0:3]
     else:
         while len(resposta) < 3:
@@ -143,8 +176,58 @@ def Top3(lista):
         return resposta
 
 
+def CalculaEstrato(lista, qualis, estratos):
+    d = {}
+
+    # count elements
+    for l in lista:
+        d[l] = 1 + d.get(l, 0)
+
+    if '' in d:
+        d.pop('')
+
+    contagem = {}
+    for e in estratos:
+        contagem[e] = 0
+
+    for veiculo in d.keys():
+        q = qualis[veiculo]
+        n = d[veiculo]
+        contagem[q] += n
+
+    resposta = []
+    for e in estratos:
+        resposta.append(contagem[e])
+
+    return resposta
+
+
+def QualisUnificado(tabela):
+    resposta = {}
+    for linha in tabela:
+        sigla = linha[siglaTotalCol]
+        qualis = linha[qualisTotalCol]
+        if len(sigla) != 0:
+            if qualis in iGeral:
+                if sigla in resposta:
+                    if resposta[sigla] > qualis:
+                        resposta[sigla] = qualis
+                else:
+                    resposta[sigla] = qualis
+
+    return resposta
+
+
 def Normaliza(s):
     return string.replace(s.title(), ' ', '')
+    print(s)
+    print(s2)
+    return s2
+
+
+def LimpaSigla(s):
+    return filter(lambda x: x.isalnum(), string.replace(s, ' ', ''))
+
 
 def FiltraAutores(lista, categoria):
     resultado = []
@@ -159,6 +242,7 @@ def FiltraAutores(lista, categoria):
 
     return resultado
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Gera os Word Clouds para todos os programas')
@@ -170,10 +254,11 @@ if __name__ == '__main__':
     parser.add_argument('-wca', '--wordcloudautores', action='store_true', required=False, help='Gera Word Cloud dos autores')
     parser.add_argument('-ha', '--histogramaautores', action='store_true', required=False, help='Gera Histograma dos autores')
     parser.add_argument('-r', '--recria', action='store_true', required=False, help='Recria arquivos já existentes')
+    parser.add_argument('-f', '--filtra', type=str, required=False, help='Filtra apenas os programas informados separados por vírgula')
 
     args = parser.parse_args()
 
-    if args.delimiter != None:
+    if args.delimiter is not None:
         delimiter = args.delimiter
     else:
         delimiter = ';'
@@ -181,7 +266,19 @@ if __name__ == '__main__':
     inputData = list(csv.reader(open(args.input), delimiter=delimiter))
     programas = list(csv.reader(open(args.programas), delimiter=delimiter))
 
+    if args.filtra is not None and len(args.filtra) != 0:
+        filtraProgramas = args.filtra.split(',')
+    else:
+        filtraProgramas = [x[1] for x in programas]
+
+    qualis = QualisUnificado(inputData)
+
+    comparativo = []
+
     for sigla, nome in programas:
+        if not nome in filtraProgramas:
+            continue
+
         print('Programa:', nome, '...')
         prefixo = sigla + '-' + nome
 
@@ -226,11 +323,11 @@ if __name__ == '__main__':
         autoresTotal = SelecionaColuna(producaoTotal, autoresCol)
         discenteMestrado = FiltraAutores(autoresTotal, ['DISCENTE MESTRADO'])
         discenteDoutorado = FiltraAutores(autoresTotal, ['DISCENTE DOUTORADO'])
-        docentePermanente = FiltraAutores(autoresTotal, ['DOCENTE PERMANTENTE'])
+        docentePermanente = FiltraAutores(autoresTotal, ['DOCENTE PERMANENTE'])
         docenteColaborador = FiltraAutores(autoresTotal, ['DOCENTE COLABORADOR'])
         egresso = FiltraAutores(autoresTotal, ['PARTEXT_EGRESSO_3_ANOS'])
         docentes = FiltraAutores(autoresTotal, ['DOCENTE PERMANENTE', 'DOCENTE COLABORADOR'])
-        discentes = FiltraAutores(autoresTotal, ['DISCENTE MESTRADO', 'DISCENTE DOUTORADO', 'PARTEXT_EGRESSO_3_ANOS'])
+        discentes = FiltraAutores(autoresTotal, tiposDiscentes)
 
         if args.wordcloudautores:
             #CreateWordCloud(discenteMestrado, prefixo + '-wc-autor-discente-mestrado.png', args.recria)
@@ -250,15 +347,30 @@ if __name__ == '__main__':
             CreateHistogram(docentes, prefixo + '-hist-autor-docentes.png', u'Docentes (permanente + colaborador)', args.recria)
             CreateHistogram(discentes, prefixo + '-hist-autor-discentes.png', u'Discentes (mestrado+doutorado+egresso)', args.recria)
 
-        # top3Programa = Top3(wcTotal)
-        # top3Conferencias = Top3(wcConferencias)
-        # top3Periodicos = Top3(wcPeriodicos)
-        #
-        # for i in range(1, 4):
-        #     wcTotalTop = ExcluiLinhas(wcTotal, top3Programa[0:i])
-        #     wcConferenciasTop = ExcluiLinhas(wcConferencias, top3Conferencias[0:i])
-        #     wcPeriodicosTop = ExcluiLinhas(wcPeriodicos, top3Periodicos[0:i])
-        #
-        #     CreateWordCloud(wcTotalTop, prefixo + '-wc-total-irestrito-' + str(i) + '.png')
-        #     CreateWordCloud(wcConferenciasTop, prefixo + '-wc-conf-irestrito-' + str(i) + '.png')
-        #     CreateWordCloud(wcPeriodicosTop, prefixo + '-wc-per-irestrito-' + str(i) + '.png')
+        linha = [sigla,nome]
+        top3Producoes = Top3(wcTotal, qualis)
+        meio = []
+        final = ['So Alunos']
+
+        prodIGeral = SelecionaLinhas(producaoPrograma, qualisTotalCol, iGeral)
+        for ano in ['2013', '2014', '2015', '2016']:
+            linha.append(ano)
+            prodAno = SelecionaLinhas(prodIGeral, anoCol, [ano])
+            soAlunos = SelecionaPorCategoriaAutores(prodIGeral, tiposDiscentes)
+            wcIGeral = SelecionaColuna(prodAno, siglaTotalCol)
+            wcAlunos = SelecionaColuna(soAlunos, siglaTotalCol)
+            linha.extend(CalculaEstrato(wcIGeral, qualis, iGeral))
+            Top3Removidos = ExcluiLinhas(wcIGeral, top3Producoes)
+            alunosTop3Removidos = ExcluiLinhas(wcAlunos, top3Producoes)
+            meio.append(ano)
+            meio.extend(CalculaEstrato(Top3Removidos, qualis, iGeral))
+            final.append(ano)
+            final.extend(CalculaEstrato(alunosTop3Removidos, qualis, iGeral))
+
+        linha.extend(top3Producoes)
+        linha.extend(meio)
+        linha.extend(final)
+
+        comparativo.append(linha)
+
+    csv.writer(open('comparativo.csv', 'wt'), delimiter=delimiter).writerows(comparativo)

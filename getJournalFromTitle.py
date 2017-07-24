@@ -45,7 +45,7 @@ def SaveOutputFile(filename, data):
     # Unpack the data dictionary and write the CSV file output
 
     outFile = open(filename, 'wt')
-    outFile.write('id;title;booktitle;year;pages;crossref;volume;doi;url;authors\n')
+    outFile.write('id;title;year;pages;volume;journal;number;ee;url;authors\n')
     for line in data:
         l = string.join(map(lambda x: '"' + unicode(x).encode('utf-8') + '"', line), ';') + '\n'
         outFile.write(l)
@@ -55,7 +55,7 @@ class DBLPHandler(xml.sax.ContentHandler):
     def __init__(self):
         xml.sax.ContentHandler.__init__(self)
         self.currentData = ''
-        self.validKeys = ['title', 'booktitle', 'year', 'pages', 'crossref', 'number', 'ee', 'url']
+        self.validKeys = ['title', 'year', 'pages', 'volume', 'journal', 'number', 'ee', 'url']
         self.authors = []
         self.keys = {}
         self.count = 0
@@ -68,7 +68,7 @@ class DBLPHandler(xml.sax.ContentHandler):
 
     def startElement(self, name, attrs):
         self.currentData = name
-        if name == 'inproceedings':
+        if name == 'article':
             self.go = True
             self.keys = {}
             for i in self.validKeys:
@@ -76,7 +76,7 @@ class DBLPHandler(xml.sax.ContentHandler):
             self.authors = []
 
     def endElement(self, name):
-        if name == 'inproceedings':
+        if name == 'article':
             self.go = False
             if len(self.keys['title']) != 0:
                 if self.keys['title'][-1] == '.':
@@ -95,16 +95,16 @@ class DBLPHandler(xml.sax.ContentHandler):
 
                 inputData[key].append(','.join(self.authors))
                 self.found += 1
-                print '*** Found', self.keys['booktitle']
+                print '*** Found', self.keys['journal']
             else:
                 if self.skipInProceedings == 10000:
-                    print('Skipping Proceedings')
+                    print('Skipping Articles')
                     self.skipInProceedings = 0
                 else:
                     self.skipInProceedings += 1
-        if name == 'article':
+        if name == 'inproceedings':
             if self.skipArticles == 10000:
-                print('Skipping Articles')
+                print('Skipping InProceedings')
                 self.skipArticles = 0
             else:
                 self.skipArticles += 1
@@ -122,7 +122,7 @@ class DBLPHandler(xml.sax.ContentHandler):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Get Booktitles from DBLP XML file based on paper titles')
+    parser = argparse.ArgumentParser(description='Get Journal from DBLP XML file based on paper titles')
     parser.add_argument('-d', '--dblp', type=str, required=True, help='Input DBLP XML file')
     parser.add_argument('-i', '--input', type=str, required=True, help='Input CSV file')
     parser.add_argument('-o', '--output', type=str, required=True, help='Output CSV file')
