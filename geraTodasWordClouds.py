@@ -24,6 +24,7 @@ def ColunaToIndice(coluna):
 
 iRestrito = ['A1', 'A2', 'B1']
 iGeral = ['A1', 'A2', 'B1', 'B2', 'B3', 'B4', 'B5']
+pesosQualis = [1.0, 0.85, 0.7, 0.5, 0.2, 0.1, 0.05]
 
 codigoProgCol = ColunaToIndice('B')
 siglaConfCol = ColunaToIndice('Y')
@@ -34,6 +35,7 @@ siglaTotalCol = ColunaToIndice('BF')
 qualisTotalCol = ColunaToIndice('W')
 autoresCol = ColunaToIndice('O')
 anoCol = ColunaToIndice('A')
+subtipoCol = ColunaToIndice('Q')
 tiposDiscentes = ['DISCENTE MESTRADO', 'DISCENTE DOUTORADO', 'PARTEXT_EGRESSO_3_ANOS']
 
 
@@ -220,9 +222,6 @@ def QualisUnificado(tabela):
 
 def Normaliza(s):
     return string.replace(s.title(), ' ', '')
-    print(s)
-    print(s2)
-    return s2
 
 
 def LimpaSigla(s):
@@ -274,23 +273,25 @@ if __name__ == '__main__':
     qualis = QualisUnificado(inputData)
 
     comparativo = []
+    dadosProgramas = {}
 
-    for sigla, nome in programas:
-        if not nome in filtraProgramas:
+    for codigoPrograma, siglaPrograma in programas:
+        if not siglaPrograma in filtraProgramas:
             continue
 
-        print('Programa:', nome, '...')
-        prefixo = sigla + '-' + nome
+        print('Programa:', siglaPrograma, '...')
+        prefixo = codigoPrograma + '-' + siglaPrograma
+        dadosProgramas[siglaPrograma] = {'sigla': siglaPrograma, 'codigo': codigoPrograma}
 
         # Seleciona a produção do programa filtrando a coluna de código
 
-        producaoPrograma = SelecionaLinhas(inputData, codigoProgCol, [sigla])
+        producaoPrograma = SelecionaLinhas(inputData, codigoProgCol, [codigoPrograma])
 
         # Depois sleciona tanto periódicos quanto conferências deste programa,
         # baseado no iRestrito
         producaoTotal = SelecionaLinhas(producaoPrograma, qualisTotalCol, iRestrito)
-        producaoPeriodicos = SelecionaLinhas(producaoPrograma, qualisPerCol, iRestrito)
-        producaoConferencias = SelecionaLinhas(producaoPrograma, qualisConfCol, iRestrito)
+        producaoPeriodicos = SelecionaLinhas(producaoTotal, subtipoCol, ['ARTIGO EM PERIODICO'])
+        producaoConferencias = SelecionaLinhas(producaoTotal, subtipoCol, ['TRABALHO EM ANAIS'])
         limite = 3 * len(producaoPeriodicos)
 
         # O limite de conferências é 3 * periódicos no iRestrito
@@ -347,7 +348,7 @@ if __name__ == '__main__':
             CreateHistogram(docentes, prefixo + '-hist-autor-docentes.png', u'Docentes (permanente + colaborador)', args.recria)
             CreateHistogram(discentes, prefixo + '-hist-autor-discentes.png', u'Discentes (mestrado+doutorado+egresso)', args.recria)
 
-        linha = [sigla,nome]
+        linha = [codigoPrograma, siglaPrograma]
         top3Producoes = Top3(wcTotal, qualis)
         meio = []
         final = ['So Alunos']
@@ -356,7 +357,7 @@ if __name__ == '__main__':
         for ano in ['2013', '2014', '2015', '2016']:
             linha.append(ano)
             prodAno = SelecionaLinhas(prodIGeral, anoCol, [ano])
-            soAlunos = SelecionaPorCategoriaAutores(prodIGeral, tiposDiscentes)
+            soAlunos = SelecionaPorCategoriaAutores(prodAno, tiposDiscentes)
             wcIGeral = SelecionaColuna(prodAno, siglaTotalCol)
             wcAlunos = SelecionaColuna(soAlunos, siglaTotalCol)
             linha.extend(CalculaEstrato(wcIGeral, qualis, iGeral))

@@ -21,19 +21,49 @@ def ColunaToIndice(coluna):
 
     return resposta - 1
 
+
 iRestrito = ['A1', 'A2', 'B1']
 iGeral = ['A1', 'A2', 'B1', 'B2', 'B3', 'B4', 'B5']
+pesosQualis = [1.0, 0.85, 0.7, 0.5, 0.2, 0.1, 0.05]
 
-codigoProgCol = 1
-siglaConfCol = 50
-qualisConfCol = 51
-siglaPerCol = 52
-qualisPerCol = 53
-siglaTotalCol = 54
-qualisTotalCol = 55
-autoresCol = 8
-anoCol = 0
+codigoProgCol = ColunaToIndice('B')
+siglaConfCol = ColunaToIndice('Y')
+qualisConfCol = ColunaToIndice('W')
+siglaPerCol = ColunaToIndice('BE')
+qualisPerCol = ColunaToIndice('W')
+siglaTotalCol = ColunaToIndice('BF')
+qualisTotalCol = ColunaToIndice('W')
+autoresCol = ColunaToIndice('O')
+anoCol = ColunaToIndice('A')
+subtipoCol = ColunaToIndice('Q')
+idCol = ColunaToIndice('BC')
 tiposDiscentes = ['DISCENTE MESTRADO', 'DISCENTE DOUTORADO', 'PARTEXT_EGRESSO_3_ANOS']
+colAtivosSiglaPrograma = ColunaToIndice('A')
+colAtivosNomeDocente = ColunaToIndice('B')
+colAtivosAtivo = {'2013': ColunaToIndice('I'),
+                  '2014': ColunaToIndice('P'),
+                  '2015': ColunaToIndice('W'),
+                  '2016': ColunaToIndice('AD')}
+colPPSPPJ = {'2013': ColunaToIndice('D'),
+             '2014': ColunaToIndice('K'),
+             '2015': ColunaToIndice('R'),
+             '2016': ColunaToIndice('Y')}
+colCategoria = {'2013': ColunaToIndice('E'),
+                '2014': ColunaToIndice('L'),
+                '2015': ColunaToIndice('S'),
+                '2016': ColunaToIndice('Z')}
+colAula = {'2013': ColunaToIndice('F'),
+           '2014': ColunaToIndice('M'),
+           '2015': ColunaToIndice('T'),
+           '2016': ColunaToIndice('AA')}
+colOrientacao = {'2013': ColunaToIndice('G'),
+                 '2014': ColunaToIndice('N'),
+                 '2015': ColunaToIndice('U'),
+                 '2016': ColunaToIndice('AB')}
+colPublicacao = {'2013': ColunaToIndice('H'),
+                 '2014': ColunaToIndice('O'),
+                 '2015': ColunaToIndice('V'),
+                 '2016': ColunaToIndice('AC')}
 anos = ['2013', '2014', '2015', '2016']
 
 
@@ -53,7 +83,9 @@ def CreateWordCloud(wordList, outFile, recria):
 
     if len(wordList) == 0:
         return
-    text = ' '.join(wordList)
+
+    limpo = map(LimpaSigla, wordList)
+    text = ' '.join(limpo)
 
     # Generate a word cloud image
     wordcloud = WordCloud(width=1920, height=1024).generate(text)
@@ -121,6 +153,18 @@ def SelecionaLinhas(tabela, coluna, valores):
         if len(linha) > coluna:
             if linha[coluna] in valores:
                 resposta.append(linha)
+
+    return resposta
+
+
+def SelecionaProducaoAutores(tabela, autores):
+    resposta = []
+    for linha in tabela:
+        if len(linha) > autoresCol:
+            for autor in autores:
+                if autor in linha[autoresCol]:
+                    resposta.append(linha)
+                    break
 
     return resposta
 
@@ -220,6 +264,10 @@ def Normaliza(s):
     return string.replace(s.title(), ' ', '')
 
 
+def LimpaSigla(s):
+    return filter(lambda x: x.isalnum(), string.replace(s, ' ', ''))
+
+
 def FiltraAutores(lista, categoria):
     resultado = []
     for l in lista:
@@ -234,74 +282,65 @@ def FiltraAutores(lista, categoria):
     return resultado
 
 
+def DoisDeTres(a, b, c):
+    return (int(a) > 0 and int(b) > 0) or (int(a) > 0 and int(c) > 0) or (int(b) > 0 and int(c) > 0)
 
-colpdCodigoPrograma = ColunaToIndice('B')
-colpdNomeDocente = ColunaToIndice('Q')
-colpdAno = ColunaToIndice('A')
-colpdTotalPeriodicos = ColunaToIndice('W')
-colpdTotalConferencias = ColunaToIndice('AZ')
+def AjustaPermanentes(tabela):
+    resposta = []
+    for linha in tabela:
+        for ano in anos:
+            if linha[colCategoria[ano]] == 'PERMANENTE':
+                if DoisDeTres(linha[colAula[ano]], linha[colOrientacao[ano]], linha[colPublicacao[ano]]):
+                    if len(linha[colPPSPPJ[ano]]) == 0:
+                        linha[colAtivosAtivo[ano]] = 'ATIVO'
+                else:
+                    linha[colAtivosAtivo[ano]] = 'na'
+        resposta.append(linha)
 
-coldCodigoPrograma = ColunaToIndice('B')
-coldNomeDocente = ColunaToIndice('R')
-coldAno = ColunaToIndice('A')
-coldDisciplinaResponsavel = ColunaToIndice('AS')
-coldDisciplinaParticipante = ColunaToIndice('AU')
-coldOrientacaoAndamento = ColunaToIndice('AZ')
-coldOrientacaoConcluida = ColunaToIndice('BD')
-coldCategoria = ColunaToIndice('AG')
-coldPosDoutorado = ColunaToIndice('AA')
-coldRegimeTrabalho = ColunaToIndice('AI')
-coldPQ = ColunaToIndice('AJ')
-coldDT = ColunaToIndice('AM')
-coldProjetoResponsavel = ColunaToIndice('AP')
-coldProjetoParticipante = ColunaToIndice('AQ')
-coldProjetoFinanciamento = ColunaToIndice('AR')
-coldAulaResponsavel = ColunaToIndice('AS')
-coldAulaParticipante = ColunaToIndice('AU')
-coldOrientacaoAndamentoMestrado = ColunaToIndice('AW')
-coldOrientacaoAndamentoDoutorado = ColunaToIndice('AX')
-coldOrientacaoConcluidaMestrado = ColunaToIndice('BA')
-coldOrientacaoConcluidaDoutorado = ColunaToIndice('BB')
-coldGraduacaoTutoria = ColunaToIndice('BH')
-coldGraduacaoMonografia = ColunaToIndice('BI')
-coldGraduacaoIniciacaoCientifica = ColunaToIndice('BJ')
-coldGraduacaoDisciplinas = ColunaToIndice('BK')
-coldOutrosPPGPermanente = ColunaToIndice('BM')
-coldOutrosPPGColaborador = ColunaToIndice('BN')
-coldOutrosPPGVisitante = ColunaToIndice('BO')
+    return resposta
+
+
+def ColetaAtivos(tabela, programa):
+    resposta = {}
+    docentesPrograma = SelecionaLinhas(tabela, colAtivosSiglaPrograma, [programa])
+    for ano in anos:
+        resposta[ano] = SelecionaColuna(SelecionaLinhas(docentesPrograma, colAtivosAtivo[ano], ['ATIVO']),
+                                        colAtivosNomeDocente)
+    return resposta
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Gera os Word Clouds para todos os programas')
     parser.add_argument('-i', '--input', type=str, required=True, help='Produção Completa de todos os programas')
-    parser.add_argument('-pd', '--producoesdocentes', type=str, required=True, help='Arquivo com a aba producoes_docente')
+    parser.add_argument('-a', '--ativos', type=str, required=True, help='Planilha com Docentes ativos')
     parser.add_argument('-p', '--programas', type=str, required=True, help='Arquivo com os códigos dos programas')
-    parser.add_argument('-d', '--docentes', type=str, required=True, help='arquivo com a aba docentes')
-    parser.add_argument('-r', '--recria', action='store_true', required=False, help='Recria arquivos já existentes')
+    parser.add_argument('-d', '--delimiter', type=str, required=False, help='CSV delimiter - default=;')
     parser.add_argument('-f', '--filtra', type=str, required=False, help='Filtra apenas os programas informados separados por vírgula')
 
     args = parser.parse_args()
 
-    delimiter = ';'
+    if args.delimiter is not None:
+        delimiter = args.delimiter
+    else:
+        delimiter = ';'
 
     inputData = list(csv.reader(open(args.input), delimiter=delimiter))
-    producoesDocentesTotal = list(csv.reader(open(args.producoesdocentes), delimiter=delimiter))
-    docentesTotal = list(csv.reader(open(args.docentes), delimiter=delimiter))
     programas = list(csv.reader(open(args.programas), delimiter=delimiter))
+    tabelaAtivos = list(csv.reader(open(args.ativos), delimiter=delimiter))
 
-    if args.filtra != None and len(args.filtra) != 0:
+    if args.filtra is not None and len(args.filtra) != 0:
         filtraProgramas = args.filtra.split(',')
     else:
         filtraProgramas = [x[1] for x in programas]
 
     qualis = QualisUnificado(inputData)
 
-    resultados = [['Programa', 'Docente', 'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito',
-                  'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito',
-                  'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito',
-                  'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito']]
-    consolidado = [['Programa', '2013', '2014', '2015', '2016', 'Olhar AdHoc']]
+    dadosProgramas = {}
+    idsProducoesAtivos = []
+    ativosSaida = []
+    ativosConsolidado = []
+
+    tabelaAtivos = AjustaPermanentes(tabelaAtivos)
 
     for codigoPrograma, siglaPrograma in programas:
         if not siglaPrograma in filtraProgramas:
@@ -309,67 +348,28 @@ if __name__ == '__main__':
 
         print('Programa:', siglaPrograma, '...')
         prefixo = codigoPrograma + '-' + siglaPrograma
+        dadosProgramas[siglaPrograma] = {'sigla': siglaPrograma, 'codigo': codigoPrograma}
 
-        producoesDocentes = SelecionaLinhas(producoesDocentesTotal, colpdCodigoPrograma, [codigoPrograma])
-        docentes = SelecionaLinhas(docentesTotal, coldCodigoPrograma, [codigoPrograma])
+        # Monta a listagem de docentes ativos
+        ativosPrograma = ColetaAtivos(tabelaAtivos, siglaPrograma)
 
-        nomeDocentes = list(set(SelecionaColuna(docentes, coldNomeDocente)))
-        ativosNoAno = {}
-        olharAdHoc = 'nao'
+        # Seleciona a produção do programa filtrando a coluna de código
+
+        producaoPrograma = SelecionaLinhas(inputData, codigoProgCol, [codigoPrograma])
+
         for ano in anos:
-            ativosNoAno[ano] = 0
+            producaoAno = SelecionaLinhas(producaoPrograma, anoCol, [ano])
+            prodAtivos = SelecionaProducaoAutores(producaoAno, ativosPrograma[ano])
+            idsProducoesAtivos.extend(SelecionaColuna(prodAtivos, idCol))
 
-        # Computo de docentes ativos
-        for doutor in nomeDocentes:
-            linha = [siglaPrograma, doutor]
-            soDocente = SelecionaLinhas(docentes, coldNomeDocente, [doutor])
-            publicacoes = SelecionaLinhas(producoesDocentes, colpdNomeDocente, [doutor])
-            for ano in anos:
-                linha.append(ano)
-                anoSelecionado = SelecionaLinhas(soDocente, coldAno, [ano])
-                if len(anoSelecionado) == 1:
-                    deuAula = int(anoSelecionado[0][coldDisciplinaResponsavel]) + int(anoSelecionado[0][coldDisciplinaParticipante])
-                    orientou = int(anoSelecionado[0][coldOrientacaoAndamento]) + int(anoSelecionado[0][coldOrientacaoConcluida])
-                    categoria = anoSelecionado[0][coldCategoria]
-                else:
-                    deuAula = 0
-                    orientou = 0
-                    categoria = ''
-
-                anoSelecionado = SelecionaLinhas(publicacoes, colpdAno, ano)
-                if len(anoSelecionado) == 1:
-                    publicou = int(anoSelecionado[0][colpdTotalPeriodicos]) + int(anoSelecionado[0][colpdTotalConferencias])
-                else:
-                    publicou = 0
-
-                veredito = 'na'
-                if categoria == 'PERMANENTE':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'ATIVO'
-                    else:
-                        veredito = 'SERA?'
-                elif categoria == 'COLABORADOR':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'ATIVO'
-                elif categoria == 'VISITANTE':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'AD-HOC'
-
-                if veredito == 'ATIVO':
-                    ativosNoAno[ano] += 1
-
-                if veredito == 'AD-HOC':
-                    olharAdHoc = 'SIM'
-
-                linha.extend([categoria, deuAula, orientou, publicou, veredito])
-
-            resultados.append(linha)
-
-        linha = [siglaPrograma]
+        linha = [codigoPrograma, siglaPrograma]
         for ano in anos:
-            linha.append(ativosNoAno[ano])
-        linha.append(olharAdHoc)
-        consolidado.append(linha)
+            for docente in ativosPrograma[ano]:
+                ativosSaida.append([codigoPrograma, siglaPrograma, ano, docente])
+            linha.append(len(ativosPrograma[ano]))
 
-    csv.writer(open('ativos_detalhado.csv', 'wt'), delimiter=delimiter).writerows(resultados)
-    csv.writer(open('ativos.csv', 'wt'), delimiter=delimiter).writerows(consolidado)
+        ativosConsolidado.append(linha)
+
+    csv.writer(open('idProducoesAtivos.csv', 'wt'), delimiter=delimiter).writerows([[x] for x in idsProducoesAtivos])
+    csv.writer(open('ativos-detalhado.csv', 'wt'), delimiter=delimiter).writerows(ativosSaida)
+    csv.writer(open('ativos-consolidado.csv', 'wt'), delimiter=delimiter).writerows(ativosConsolidado)

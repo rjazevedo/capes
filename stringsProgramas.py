@@ -234,6 +234,23 @@ def FiltraAutores(lista, categoria):
     return resultado
 
 
+def TotalizaAtivosQuadrienio(tabelaAtivos, codigoPrograma):
+    dadosPrograma = SelecionaLinhas(tabelaAtivos, ColunaToIndice('A'), [codigoPrograma])
+
+    return dadosPrograma[0][2:]
+
+
+def CountNotZero(tabela, coluna):
+    return len(filter(lambda x: x[coluna] != '0', tabela))
+
+def CountNotEmpty(tabela, coluna):
+    return len(filter(lambda x: x != '', tabela))
+
+def ToInt(s):
+    if len(str(s)) > 0:
+        return int(s)
+    else:
+        return 0
 
 colpdCodigoPrograma = ColunaToIndice('B')
 colpdNomeDocente = ColunaToIndice('Q')
@@ -271,13 +288,25 @@ coldOutrosPPGColaborador = ColunaToIndice('BN')
 coldOutrosPPGVisitante = ColunaToIndice('BO')
 
 
+colrpAno = ColunaToIndice('A')
+colrpCodigoPPG = ColunaToIndice('B')
+colrpAreaConcentracao = ColunaToIndice('V')
+colrpLinhasPesquisa = ColunaToIndice('W')
+colrpTurmasMestrado = ColunaToIndice('X')
+colrpTurmasDoutorado = ColunaToIndice('Y')
+colrpTurmasMD = ColunaToIndice('Z')
+colrpDissertacoesConcluidas = ColunaToIndice('AE')
+colrpTesesConcluidas = ColunaToIndice('AG')
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Gera os Word Clouds para todos os programas')
     parser.add_argument('-i', '--input', type=str, required=True, help='Produção Completa de todos os programas')
     parser.add_argument('-pd', '--producoesdocentes', type=str, required=True, help='Arquivo com a aba producoes_docente')
+    parser.add_argument('-d', '--docentes', type=str, required=True, help='Arquivo com a aba docentes')
+    parser.add_argument('-rp', '--resumoprograma', type=str, required=True, help='Arquivo com a aba programa')
     parser.add_argument('-p', '--programas', type=str, required=True, help='Arquivo com os códigos dos programas')
-    parser.add_argument('-d', '--docentes', type=str, required=True, help='arquivo com a aba docentes')
+    parser.add_argument('-a', '--ativos', type=str, required=True, help='arquivo com os docentes ativos por programa')
     parser.add_argument('-r', '--recria', action='store_true', required=False, help='Recria arquivos já existentes')
     parser.add_argument('-f', '--filtra', type=str, required=False, help='Filtra apenas os programas informados separados por vírgula')
 
@@ -289,6 +318,8 @@ if __name__ == '__main__':
     producoesDocentesTotal = list(csv.reader(open(args.producoesdocentes), delimiter=delimiter))
     docentesTotal = list(csv.reader(open(args.docentes), delimiter=delimiter))
     programas = list(csv.reader(open(args.programas), delimiter=delimiter))
+    ativos = list(csv.reader(open(args.ativos), delimiter=delimiter))
+    resumoPrograma = list(csv.reader(open(args.resumoprograma), delimiter=delimiter))
 
     if args.filtra != None and len(args.filtra) != 0:
         filtraProgramas = args.filtra.split(',')
@@ -296,6 +327,7 @@ if __name__ == '__main__':
         filtraProgramas = [x[1] for x in programas]
 
     qualis = QualisUnificado(inputData)
+    dadosProgramas = {}
 
     resultados = [['Programa', 'Docente', 'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito',
                   'Ano', 'Categoria', 'Aula', 'Orientou', 'Publicou', 'Veredito',
@@ -307,69 +339,85 @@ if __name__ == '__main__':
         if not siglaPrograma in filtraProgramas:
             continue
 
-        print('Programa:', siglaPrograma, '...')
+        print('*** Programa:', siglaPrograma, '***')
         prefixo = codigoPrograma + '-' + siglaPrograma
 
-        producoesDocentes = SelecionaLinhas(producoesDocentesTotal, colpdCodigoPrograma, [codigoPrograma])
-        docentes = SelecionaLinhas(docentesTotal, coldCodigoPrograma, [codigoPrograma])
+        dadosProgramas[siglaPrograma] = {'sigla': siglaPrograma, 'codigo': codigoPrograma}
 
-        nomeDocentes = list(set(SelecionaColuna(docentes, coldNomeDocente)))
-        ativosNoAno = {}
-        olharAdHoc = 'nao'
-        for ano in anos:
-            ativosNoAno[ano] = 0
+        rpDados = SelecionaLinhas(resumoPrograma, colrpCodigoPPG, [codigoPrograma])
+        rpDados2016 = SelecionaLinhas(rpDados, colrpAno, ['2016'])[0]
 
-        # Computo de docentes ativos
-        for doutor in nomeDocentes:
-            linha = [siglaPrograma, doutor]
-            soDocente = SelecionaLinhas(docentes, coldNomeDocente, [doutor])
-            publicacoes = SelecionaLinhas(producoesDocentes, colpdNomeDocente, [doutor])
-            for ano in anos:
-                linha.append(ano)
-                anoSelecionado = SelecionaLinhas(soDocente, coldAno, [ano])
-                if len(anoSelecionado) == 1:
-                    deuAula = int(anoSelecionado[0][coldDisciplinaResponsavel]) + int(anoSelecionado[0][coldDisciplinaParticipante])
-                    orientou = int(anoSelecionado[0][coldOrientacaoAndamento]) + int(anoSelecionado[0][coldOrientacaoConcluida])
-                    categoria = anoSelecionado[0][coldCategoria]
-                else:
-                    deuAula = 0
-                    orientou = 0
-                    categoria = ''
+        dadosProgramas[siglaPrograma]['areasConcentracao'] = rpDados2016[colrpAreaConcentracao]
+        dadosProgramas[siglaPrograma]['linhasPesquisa'] = rpDados2016[colrpLinhasPesquisa]
 
-                anoSelecionado = SelecionaLinhas(publicacoes, colpdAno, ano)
-                if len(anoSelecionado) == 1:
-                    publicou = int(anoSelecionado[0][colpdTotalPeriodicos]) + int(anoSelecionado[0][colpdTotalConferencias])
-                else:
-                    publicou = 0
+        print('O programa está organizado em', dadosProgramas[siglaPrograma]['areasConcentracao'],
+              'área de concentração e', dadosProgramas[siglaPrograma]['linhasPesquisa'],
+              'linhas de pesquisa.')
 
-                veredito = 'na'
-                if categoria == 'PERMANENTE':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'ATIVO'
-                    else:
-                        veredito = 'SERA?'
-                elif categoria == 'COLABORADOR':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'ATIVO'
-                elif categoria == 'VISITANTE':
-                    if (deuAula > 0 and orientou > 0) or (deuAula > 0 and publicou > 0) or (orientou > 0 and publicou > 0):
-                        veredito = 'AD-HOC'
+        todosDocentes = SelecionaLinhas(docentesTotal, coldCodigoPrograma, [codigoPrograma])
+        docentesPermanentes = SelecionaLinhas(todosDocentes, coldCategoria, ['PERMANENTE'])
+        docentesColaboradores = SelecionaLinhas(todosDocentes, coldCategoria, ['COLABORADOR'])
 
-                if veredito == 'ATIVO':
-                    ativosNoAno[ano] += 1
+        dadosProgramas[siglaPrograma]['docentesPermanentes'] = len(docentesPermanentes) / 4.0
+        dadosProgramas[siglaPrograma]['docentesColaboradores'] = len(docentesColaboradores) / 4.0
 
-                if veredito == 'AD-HOC':
-                    olharAdHoc = 'SIM'
+        print('Em média, durante o quadriênio, o corpo docente do programa foi formado por',
+              dadosProgramas[siglaPrograma]['docentesPermanentes'], 'docentes permanentes e',
+              dadosProgramas[siglaPrograma]['docentesColaboradores'], 'docentes colaboradores.')
 
-                linha.extend([categoria, deuAula, orientou, publicou, veredito])
+        dadosProgramas[siglaPrograma]['ativos'] = TotalizaAtivosQuadrienio(ativos, codigoPrograma)
+        dadosProgramas[siglaPrograma]['mediaAtivos'] = reduce(lambda x, y: int(x) + int(y),  dadosProgramas[siglaPrograma]['ativos']) / 4.0
+        print('Foram considerados', dadosProgramas[siglaPrograma]['mediaAtivos'], 'docentes ativos, em média, no quadriênio.')
 
-            resultados.append(linha)
+        dadosProgramas[siglaPrograma]['pq'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldPQ, ['1A', '1B', '1C', '1D', '2']))
+        dadosProgramas[siglaPrograma]['pq1'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldPQ, ['1A', '1B', '1C', '1D']))
+        dadosProgramas[siglaPrograma]['dt'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldDT, ['1A', '1B', '1C', '1D', '2']))
 
-        linha = [siglaPrograma]
-        for ano in anos:
-            linha.append(ativosNoAno[ano])
-        linha.append(olharAdHoc)
-        consolidado.append(linha)
+        print('No ano de 2016, dentre os docentes permanentes,', dadosProgramas[siglaPrograma]['pq'],
+              'possuiam bolsa de Produtividade em Pesquisa do CNPq, sendo', dadosProgramas[siglaPrograma]['pq1'] , 'de nível 1 e',
+              dadosProgramas[siglaPrograma]['dt'], 'possuiam bolsa DT.')
 
-    csv.writer(open('ativos_detalhado.csv', 'wt'), delimiter=delimiter).writerows(resultados)
-    csv.writer(open('ativos.csv', 'wt'), delimiter=delimiter).writerows(consolidado)
+        listaNomeDocentes = list(set(SelecionaColuna(docentesPermanentes, coldNomeDocente)))
+
+        projetosFinanciamento = 0
+        projetosResponsavel = 0
+        for docente in listaNomeDocentes:
+            soDocente = SelecionaLinhas(docentesPermanentes, coldNomeDocente, [docente])
+            if CountNotZero(soDocente, coldProjetoFinanciamento) > 0:
+                projetosFinanciamento += 1
+            if CountNotZero(soDocente, coldProjetoResponsavel) > 0:
+                projetosResponsavel += 1
+
+        print(projetosFinanciamento, 'docentes permanentes tiveram projetos com financiamento e', projetosResponsavel,
+              'docentes permanentes foram responsáveis por projetos no quadriênio.')
+
+        dadosProgramas[siglaPrograma]['docentesProjetosFinanciamento'] = projetosFinanciamento
+        dadosProgramas[siglaPrograma]['docentesProjetosResponsavel'] = projetosResponsavel
+
+        docentesDisciplinas = 0
+        for docente in listaNomeDocentes:
+            soDocente = SelecionaLinhas(docentesPermanentes, coldNomeDocente, [docente])
+            if CountNotZero(soDocente, coldDisciplinaParticipante) + CountNotZero(soDocente, coldDisciplinaResponsavel) > 0:
+                docentesDisciplinas += 1
+
+        dadosProgramas[siglaPrograma]['docentesDisciplinas'] = docentesDisciplinas
+
+        print('Durante o quadriênio,', docentesDisciplinas, 'docentes permanentes distintos ministraram disciplinas no programa.')
+
+        turmasDisciplinas = reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpTurmasDoutorado)) + \
+                            reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpTurmasMestrado)) + \
+                            reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpTurmasMD))
+
+        print('Foram oferecidas', turmasDisciplinas, 'turmas de disciplinas durante o quadriênio.')
+        dadosProgramas[siglaPrograma]['turmasDisciplinas'] = turmasDisciplinas
+
+        tesesDefendidas = reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpTesesConcluidas))
+        mediaTeses = ToInt(tesesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos']
+        dissertacoesDefendidas = reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpDissertacoesConcluidas))
+        mediaDissertacoes = ToInt(dissertacoesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos']
+
+        print('No quadriênio, foram defendidas', tesesDefendidas, 'teses de doutorado e', dissertacoesDefendidas,
+              'dissertações de mestrado, numa média de', '{:.1f}'.format(mediaTeses), 'teses e',
+              '{:.1f}'.format(mediaDissertacoes), 'dissertações por docente ativo por ano.')
+        dadosProgramas[siglaPrograma]['tesesDefendidas'] = tesesDefendidas
+        dadosProgramas[siglaPrograma]['dissertacoesDefendidas'] = dissertacoesDefendidas
