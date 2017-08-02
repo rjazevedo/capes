@@ -21,49 +21,22 @@ def ColunaToIndice(coluna):
 
     return resposta - 1
 
-
 iRestrito = ['A1', 'A2', 'B1']
 iGeral = ['A1', 'A2', 'B1', 'B2', 'B3', 'B4', 'B5']
-pesosQualis = [1.0, 0.85, 0.7, 0.5, 0.2, 0.1, 0.05]
 
-codigoProgCol = ColunaToIndice('B')
-siglaConfCol = ColunaToIndice('Y')
-qualisConfCol = ColunaToIndice('W')
-siglaPerCol = ColunaToIndice('BE')
-qualisPerCol = ColunaToIndice('W')
+tituloArtigoCol = ColunaToIndice('N')
+codigoProgCol = 1
+siglaConfCol = 50
+qualisConfCol = 51
+siglaPerCol = 52
+qualisPerCol = 53
 siglaTotalCol = ColunaToIndice('BF')
-qualisTotalCol = ColunaToIndice('W')
+qualisTotalCol = 55
 autoresCol = ColunaToIndice('O')
-anoCol = ColunaToIndice('A')
-subtipoCol = ColunaToIndice('Q')
-idCol = ColunaToIndice('BC')
+colSubtipoProducao = ColunaToIndice('Q') # 'TRABALHO EM ANAIS'
+anoCol = 0
 tiposDiscentes = ['DISCENTE MESTRADO', 'DISCENTE DOUTORADO', 'PARTEXT_EGRESSO_3_ANOS']
-colAtivosSiglaPrograma = ColunaToIndice('A')
-colAtivosNomeDocente = ColunaToIndice('B')
-colAtivosAtivo = {'2013': ColunaToIndice('I'),
-                  '2014': ColunaToIndice('P'),
-                  '2015': ColunaToIndice('W'),
-                  '2016': ColunaToIndice('AD')}
-colPPSPPJ = {'2013': ColunaToIndice('D'),
-             '2014': ColunaToIndice('K'),
-             '2015': ColunaToIndice('R'),
-             '2016': ColunaToIndice('Y')}
-colCategoria = {'2013': ColunaToIndice('E'),
-                '2014': ColunaToIndice('L'),
-                '2015': ColunaToIndice('S'),
-                '2016': ColunaToIndice('Z')}
-colAula = {'2013': ColunaToIndice('F'),
-           '2014': ColunaToIndice('M'),
-           '2015': ColunaToIndice('T'),
-           '2016': ColunaToIndice('AA')}
-colOrientacao = {'2013': ColunaToIndice('G'),
-                 '2014': ColunaToIndice('N'),
-                 '2015': ColunaToIndice('U'),
-                 '2016': ColunaToIndice('AB')}
-colPublicacao = {'2013': ColunaToIndice('H'),
-                 '2014': ColunaToIndice('O'),
-                 '2015': ColunaToIndice('V'),
-                 '2016': ColunaToIndice('AC')}
+tiposDocentes = ['DOCENTE PERMANENTE', 'DOCENTE COLABORADOR', 'DOCENTE VISITANTE']
 anos = ['2013', '2014', '2015', '2016']
 
 
@@ -75,6 +48,10 @@ def SelecionaColuna(tabela, coluna):
             resposta.append(linha[coluna].strip())
 
     return resposta
+
+
+def LimpaSigla(s):
+    return filter(lambda x: x.isalnum(), string.replace(s, ' ', ''))
 
 
 def CreateWordCloud(wordList, outFile, recria):
@@ -146,6 +123,36 @@ def CreateHistogram(wordList, outFile, titulo, recria):
     plt.close()
 
 
+def GraficoBarras(tabela, outFile, titulo, recria):
+    if not recria and os.path.exists(outFile):
+        return
+
+    producao = sorted(tabela, key=lambda x: x[1], reverse=True)
+
+    N = len(producao)
+    nomes = [unicode(x[0]) for x in producao]
+    quantidades = [x[1] for x in producao]
+
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.35       # the width of the bars
+
+    plt.figure(figsize=(16,9), facecolor='k')
+    fig, ax = plt.subplots(1, 1, figsize=(16,9))
+    rects1 = ax.bar(ind, quantidades, width, color='r')
+
+    # add some text for labels, title and axes ticks
+    ax.set_ylabel('Porcentagem')
+    ax.set_title(titulo)
+    ax.set_xticks(ind + width / 2)
+    ax.set_xticklabels(nomes, rotation='vertical')
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(8)
+
+    plt.savefig(outFile)
+    plt.cla()
+    plt.close()
+
+
 def SelecionaLinhas(tabela, coluna, valores):
     resposta = []
 
@@ -153,18 +160,6 @@ def SelecionaLinhas(tabela, coluna, valores):
         if len(linha) > coluna:
             if linha[coluna] in valores:
                 resposta.append(linha)
-
-    return resposta
-
-
-def SelecionaProducaoAutores(tabela, autores):
-    resposta = []
-    for linha in tabela:
-        if len(linha) > autoresCol:
-            for autor in autores:
-                if autor in linha[autoresCol]:
-                    resposta.append(linha)
-                    break
 
     return resposta
 
@@ -264,10 +259,6 @@ def Normaliza(s):
     return string.replace(s.title(), ' ', '')
 
 
-def LimpaSigla(s):
-    return filter(lambda x: x.isalnum(), string.replace(s, ' ', ''))
-
-
 def FiltraAutores(lista, categoria):
     resultado = []
     for l in lista:
@@ -282,102 +273,71 @@ def FiltraAutores(lista, categoria):
     return resultado
 
 
-def DoisDeTres(a, b, c):
-    return (int(a) > 0 and int(b) > 0) or (int(a) > 0 and int(c) > 0) or (int(b) > 0 and int(c) > 0)
-
-def AjustaPermanentes(tabela):
-    resposta = []
-    for linha in tabela:
-        for ano in anos:
-            if linha[colCategoria[ano]] == 'PERMANENTE':
-                if DoisDeTres(linha[colAula[ano]], linha[colOrientacao[ano]], linha[colPublicacao[ano]]):
-                    if len(linha[colPPSPPJ[ano]]) == 0:
-                        linha[colAtivosAtivo[ano]] = 'ATIVO'
-                else:
-                    linha[colAtivosAtivo[ano]] = 'na'
-        resposta.append(linha)
-
-    return resposta
-
-
-def ColetaAtivos(tabela, programa):
-    resposta = {}
-    docentesPrograma = SelecionaLinhas(tabela, colAtivosSiglaPrograma, [programa])
-    for ano in anos:
-        resposta[ano] = SelecionaColuna(SelecionaLinhas(docentesPrograma, colAtivosAtivo[ano], ['ATIVO']),
-                                        colAtivosNomeDocente)
-    return resposta
-
+col4Nx = ColunaToIndice('A')
+col4NAno = ColunaToIndice('B')
+col4NNome = ColunaToIndice('C')
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description='Gera os Word Clouds para todos os programas')
     parser.add_argument('-i', '--input', type=str, required=True, help='Produção Completa de todos os programas')
-    parser.add_argument('-a', '--ativos', type=str, required=True, help='Planilha com Docentes ativos')
-    parser.add_argument('-g', '--glosas', type=str, required=True, help='Planilha com Glosas manuais')
     parser.add_argument('-p', '--programas', type=str, required=True, help='Arquivo com os códigos dos programas')
-    parser.add_argument('-d', '--delimiter', type=str, required=False, help='CSV delimiter - default=;')
     parser.add_argument('-f', '--filtra', type=str, required=False, help='Filtra apenas os programas informados separados por vírgula')
+    parser.add_argument('-r', '--recria', action='store_true', required=False, help='Recria arquivos já existentes')
+    parser.add_argument('-rs', '--recriasumario', action='store_true', required=False, help='Recria arquivos de sumario')
+
 
     args = parser.parse_args()
 
-    if args.delimiter is not None:
-        delimiter = args.delimiter
-    else:
-        delimiter = ';'
+    delimiter = ';'
 
     inputData = list(csv.reader(open(args.input), delimiter=delimiter))
     programas = list(csv.reader(open(args.programas), delimiter=delimiter))
-    tabelaAtivos = list(csv.reader(open(args.ativos), delimiter=delimiter))
-    glosas = list(csv.reader(open(args.glosas), delimiter=delimiter))
 
-    if args.filtra is not None and len(args.filtra) != 0:
+    if args.filtra != None and len(args.filtra) != 0:
         filtraProgramas = args.filtra.split(',')
     else:
         filtraProgramas = [x[1] for x in programas]
 
-    qualis = QualisUnificado(inputData)
-
-    dadosProgramas = {}
-    idsProducoesAtivos = []
-    ativosSaida = []
-    ativosConsolidado = []
-
-    tabelaAtivos = AjustaPermanentes(tabelaAtivos)
+    totalVeiculos = []
+    totalEgressos = []
+    participacaoDiscente = []
 
     for codigoPrograma, siglaPrograma in programas:
         if not siglaPrograma in filtraProgramas:
             continue
 
-        print('Programa:', siglaPrograma, '...')
+        print('Programa:', siglaPrograma, codigoPrograma, '...')
         prefixo = codigoPrograma + '-' + siglaPrograma
-        dadosProgramas[siglaPrograma] = {'sigla': siglaPrograma, 'codigo': codigoPrograma}
 
-        # Monta a listagem de docentes ativos
-        ativosPrograma = ColetaAtivos(tabelaAtivos, siglaPrograma)
+        dadosPrograma = SelecionaLinhas(inputData, codigoProgCol, codigoPrograma)
 
-        # Seleciona a produção do programa filtrando a coluna de código
+        nomeArquivo = codigoPrograma + '-4N.csv'
+        if os.path.isfile(nomeArquivo):
+            print('... arquivo 4N encontrado.')
+            dados4N = list(csv.reader(open(nomeArquivo), delimiter=delimiter))
+            titulos = SelecionaColuna(dados4N[1:], col4NNome)
 
-        producaoPrograma = SelecionaLinhas(inputData, codigoProgCol, [codigoPrograma])
+            selecionados = SelecionaLinhas(dadosPrograma, tituloArtigoCol, titulos)
+            print(len(titulos) - 1, len(selecionados))
 
-        for ano in anos:
-            producaoAno = SelecionaLinhas(producaoPrograma, anoCol, [ano])
-            prodAtivos = SelecionaProducaoAutores(producaoAno, ativosPrograma[ano])
-            idsProducoesAtivos.extend(SelecionaColuna(prodAtivos, idCol))
+            siglas = SelecionaColuna(selecionados, siglaTotalCol)
+            CreateWordCloud(siglas, prefixo + '-wc-veiculo.png', args.recria)
+            CreateHistogram(siglas, prefixo + '-hist-veiculos.png', u'Produção Total (veículos)', args.recria)
+            totalVeiculos.extend(siglas)
 
-        linha = [codigoPrograma, siglaPrograma]
-        for ano in anos:
-            for docente in ativosPrograma[ano]:
-                ativosSaida.append([codigoPrograma, siglaPrograma, ano, docente])
-            linha.append(len(ativosPrograma[ano]))
+            discentes = SelecionaPorCategoriaAutores(selecionados, tiposDiscentes)
+            siglas2 = SelecionaColuna(discentes, siglaTotalCol)
+            CreateWordCloud(siglas2, prefixo + '-wc-discentes+egressos.png', args.recria)
+            CreateHistogram(siglas2, prefixo + '-hist-discentes+egressos.png', u'Produção Total (discente + egressos)', args.recria)
+            totalEgressos.extend(siglas2)
 
-        ativosConsolidado.append(linha)
+            anais = SelecionaLinhas(selecionados, colSubtipoProducao, ['TRABALHO EM ANAIS'])
+            participacaoDiscente.append([siglaPrograma, 100.0 * len(siglas2) / len(siglas), len(siglas), len(anais)])
 
-    idsProducoesAtivosFinal = []
-    glosasSet = set(x[0] for x in glosas)
-    for id in idsProducoesAtivos:
-        if id not in glosasSet:
-            idsProducoesAtivosFinal.append([id])
 
-    csv.writer(open('idProducoesAtivos.csv', 'wt'), delimiter=delimiter).writerows(idsProducoesAtivosFinal)
-    csv.writer(open('ativos-detalhado.csv', 'wt'), delimiter=delimiter).writerows(ativosSaida)
-    csv.writer(open('ativos-consolidado.csv', 'wt'), delimiter=delimiter).writerows(ativosConsolidado)
+    print(participacaoDiscente)
+    CreateWordCloud(totalVeiculos, 'total-wc-veiculo.png', args.recria or args.recriasumario)
+    CreateHistogram(totalEgressos, 'total-hist-veiculos.png', u'Produção Total (veículos)', args.recria or args.recriasumario)
+    GraficoBarras(participacaoDiscente, 'total-hist-part-discente.png', u'Participação Discente na produção 4N', args.recria or args.recriasumario)
+    csv.writer(open('participacao-discente.csv', 'wt'), delimiter=delimiter).writerows(participacaoDiscente)

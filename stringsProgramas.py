@@ -358,24 +358,24 @@ if __name__ == '__main__':
         docentesPermanentes = SelecionaLinhas(todosDocentes, coldCategoria, ['PERMANENTE'])
         docentesColaboradores = SelecionaLinhas(todosDocentes, coldCategoria, ['COLABORADOR'])
 
-        dadosProgramas[siglaPrograma]['docentesPermanentes'] = len(docentesPermanentes) / 4.0
-        dadosProgramas[siglaPrograma]['docentesColaboradores'] = len(docentesColaboradores) / 4.0
+        dadosProgramas[siglaPrograma]['mediaPermanentes'] = len(docentesPermanentes) / 4.0
+        dadosProgramas[siglaPrograma]['mediaColaboradores'] = len(docentesColaboradores) / 4.0
 
         print('Em média, durante o quadriênio, o corpo docente do programa foi formado por',
-              dadosProgramas[siglaPrograma]['docentesPermanentes'], 'docentes permanentes e',
-              dadosProgramas[siglaPrograma]['docentesColaboradores'], 'docentes colaboradores.')
+              dadosProgramas[siglaPrograma]['mediaPermanentes'], 'docentes permanentes e',
+              dadosProgramas[siglaPrograma]['mediaColaboradores'], 'docentes colaboradores.')
 
         dadosProgramas[siglaPrograma]['ativos'] = TotalizaAtivosQuadrienio(ativos, codigoPrograma)
         dadosProgramas[siglaPrograma]['mediaAtivos'] = reduce(lambda x, y: int(x) + int(y),  dadosProgramas[siglaPrograma]['ativos']) / 4.0
-        print('Foram considerados', dadosProgramas[siglaPrograma]['mediaAtivos'], 'docentes ativos, em média, no quadriênio.')
+        print('Foram considerados', dadosProgramas[siglaPrograma]['mediaAtivos'], 'professores ativos, em média, no quadriênio.')
 
         dadosProgramas[siglaPrograma]['pq'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldPQ, ['1A', '1B', '1C', '1D', '2']))
         dadosProgramas[siglaPrograma]['pq1'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldPQ, ['1A', '1B', '1C', '1D']))
         dadosProgramas[siglaPrograma]['dt'] = len(SelecionaLinhas(SelecionaLinhas(docentesPermanentes, coldAno, ['2016']), coldDT, ['1A', '1B', '1C', '1D', '2']))
 
         print('No ano de 2016, dentre os docentes permanentes,', dadosProgramas[siglaPrograma]['pq'],
-              'possuiam bolsa de Produtividade em Pesquisa do CNPq, sendo', dadosProgramas[siglaPrograma]['pq1'] , 'de nível 1 e',
-              dadosProgramas[siglaPrograma]['dt'], 'possuiam bolsa DT.')
+              'possuíam bolsa de Produtividade em Pesquisa do CNPq, sendo', dadosProgramas[siglaPrograma]['pq1'] , 'de nível 1. Além disso',
+              dadosProgramas[siglaPrograma]['dt'], 'possuíam bolsa DT.')
 
         listaNomeDocentes = list(set(SelecionaColuna(docentesPermanentes, coldNomeDocente)))
 
@@ -412,12 +412,27 @@ if __name__ == '__main__':
         dadosProgramas[siglaPrograma]['turmasDisciplinas'] = turmasDisciplinas
 
         tesesDefendidas = reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpTesesConcluidas))
-        mediaTeses = ToInt(tesesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos']
         dissertacoesDefendidas = reduce(lambda x, y: ToInt(x) + ToInt(y), SelecionaColuna(rpDados, colrpDissertacoesConcluidas))
-        mediaDissertacoes = ToInt(dissertacoesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos']
+        dadosProgramas[siglaPrograma]['tesesDefendidas'] = tesesDefendidas
+        dadosProgramas[siglaPrograma]['dissertacoesDefendidas'] = dissertacoesDefendidas
+
+        mediaTeses = ToInt(tesesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos'] / 4.0
+        mediaDissertacoes = ToInt(dissertacoesDefendidas) / dadosProgramas[siglaPrograma]['mediaAtivos'] / 4.0
 
         print('No quadriênio, foram defendidas', tesesDefendidas, 'teses de doutorado e', dissertacoesDefendidas,
               'dissertações de mestrado, numa média de', '{:.1f}'.format(mediaTeses), 'teses e',
               '{:.1f}'.format(mediaDissertacoes), 'dissertações por docente ativo por ano.')
-        dadosProgramas[siglaPrograma]['tesesDefendidas'] = tesesDefendidas
-        dadosProgramas[siglaPrograma]['dissertacoesDefendidas'] = dissertacoesDefendidas
+
+        mediaTeses = ToInt(tesesDefendidas) / dadosProgramas[siglaPrograma]['mediaPermanentes'] / 4.0
+        mediaDissertacoes = ToInt(dissertacoesDefendidas) / dadosProgramas[siglaPrograma]['mediaPermanentes'] / 4.0
+
+        print('No quadriênio, foram defendidas', tesesDefendidas, 'teses de doutorado e', dissertacoesDefendidas,
+              'dissertações de mestrado, numa média de', '{:.1f}'.format(mediaTeses), 'teses e',
+              '{:.1f}'.format(mediaDissertacoes), 'dissertações por docente permanente por ano.')
+
+        mediaTeses = ToInt(tesesDefendidas) / (dadosProgramas[siglaPrograma]['mediaPermanentes'] + dadosProgramas[siglaPrograma]['mediaColaboradores']) / 4.0
+        mediaDissertacoes = ToInt(dissertacoesDefendidas) / (dadosProgramas[siglaPrograma]['mediaPermanentes'] + dadosProgramas[siglaPrograma]['mediaColaboradores']) / 4.0
+
+        print('No quadriênio, foram defendidas', tesesDefendidas, 'teses de doutorado e', dissertacoesDefendidas,
+              'dissertações de mestrado, numa média de', '{:.1f}'.format(mediaTeses), 'teses e',
+              '{:.1f}'.format(mediaDissertacoes), 'dissertações por docente (permanente + colaborador) por ano.')
